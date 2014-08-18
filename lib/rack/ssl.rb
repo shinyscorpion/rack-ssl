@@ -17,6 +17,7 @@ module Rack
       @hsts = self.class.default_hsts_options.merge(@hsts) if @hsts
 
       @exclude = options[:exclude]
+      @exclude_cookie = options[:exclude_cookie]
       @host    = options[:host]
     end
 
@@ -77,12 +78,23 @@ module Rack
           end
 
           headers['Set-Cookie'] = cookies.map { |cookie|
-            if cookie !~ /; secure(;|$)/
+            if secure_cookie?(cookie) && cookie !~ /; secure(;|$)/
               "#{cookie}; secure"
             else
               cookie
             end
           }.join("\n")
+        end
+      end
+
+      def secure_cookie?(cookie)
+        if @exclude_cookie
+          cookie_name = URI.decode_www_form_component(
+            cookie.split(';', 2).first.split('=', 2).first
+          )
+          ! @exclude_cookie.call(cookie_name)
+        else
+          true
         end
       end
   end
