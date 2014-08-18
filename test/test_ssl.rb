@@ -95,6 +95,20 @@ class TestSSL < Test::Unit::TestCase
       last_response.headers['Set-Cookie'].split("\n")
   end
 
+  def test_not_flag_excluded_cookies_as_secure
+    self.app = Rack::SSL.new(lambda { |env|
+      headers = {
+        'Content-Type' => "text/html",
+        'Set-Cookie' => "not+so+secure=1; path=/; HttpOnly\nsecure=2; path=/; HttpOnly"
+      }
+      [200, headers, ["OK"]]
+    }, :exclude_cookie => lambda { |cookie_name| cookie_name == 'not so secure'})
+    get "https://example.org/"
+    assert_equal ["not+so+secure=1; path=/; HttpOnly",
+                  "secure=2; path=/; HttpOnly; secure" ],
+      last_response.headers['Set-Cookie'].split("\n")
+  end
+
   def test_legacy_array_headers
     self.app = Rack::SSL.new(lambda { |env|
       headers = {
